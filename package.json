@@ -1,0 +1,32 @@
+{
+  "name": "@mcd/confluence-mcp-server",
+  "version": "1.0.4",
+  "description": "MCP server for Confluence integration",
+  "main": "dist/index.js",
+  "bin": {
+    "confluence-mcp-server": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "confluence",
+    "atlassian"
+  ],
+  "author": "MCD",
+  "license": "MIT",
+  "publishConfig": {
+    "@mcd:registry": "https://nexus.mcd.com.cn/repository/mcd-admin-portal-npm"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
