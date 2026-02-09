@@ -108,3 +108,114 @@ export const downloadAttachmentTool: Tool = {
     };
   },
 };
+
+export const uploadAttachmentTool: Tool = {
+  name: "upload_attachment",
+  description:
+    "Upload a file as an attachment to a Confluence page. The file must be specified by its absolute path on the local filesystem. Optionally embed the attachment in the page body.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      page_id: {
+        type: "string",
+        description: "The Confluence page ID to attach the file to",
+      },
+      file_path: {
+        type: "string",
+        description: "Absolute path to the file to upload",
+      },
+      comment: {
+        type: "string",
+        description: "Optional comment for the attachment",
+      },
+      embed_in_body: {
+        type: "boolean",
+        description:
+          "If true, append the attachment reference to the page body after upload. Images will be embedded as <ac:image>, other files as download links. Defaults to false.",
+      },
+    },
+    required: ["page_id", "file_path"],
+  },
+  handler: async (client, args) => {
+    const { page_id, file_path, comment, embed_in_body } = args;
+    const { readFile, stat } = await import("fs/promises");
+    const { basename, isAbsolute, extname } = await import("path");
+
+    if (!isAbsolute(file_path)) {
+      throw new Error(`文件路径必须是绝对路径，收到: ${file_path}`);
+    }
+
+    const stats = await stat(file_path);
+    if (stats.size > 10 * 1024 * 1024) {
+      throw new Error(
+        `文件大小超过 10MB 限制: ${(stats.size / 1024 / 1024).toFixed(2)}MB`
+      );
+    }
+
+    const fileBuffer = await readFile(file_path);
+    const fileName = basename(file_path);
+
+    const response = await client.uploadAttachment(
+      page_id,
+      fileBuffer,
+      fileName,
+      comment
+    );
+
+    const uploaded = response.results?.[0];
+    const result: any = {
+      success: true,
+      attachment_id: uploaded?.id,
+      title: uploaded?.title || fileName,
+      page_id,
+      size: stats.size,
+    };
+
+    // 如果需要嵌入正文
+    if (embed_in_body) {
+      const imageExts = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"];
+      const ext = extname(fileName).toLowerCase();
+      const isImage = imageExts.includes(ext);
+
+      let attachmentHtml: string;
+      if (isImage) {
+        attachmentHtml = `<p><ac:image><ri:attachment ri:filename="${fileName}" /></ac:image></p>`;
+      } else {
+        attachmentHtml =
+          `<p><ac:structured-macro ac:name="view-file" ac:schema-version="1">` +
+          `<ac:parameter ac:name="name"><ri:attachment ri:filename="${fileName}" /></ac:parameter>` +
+          `</ac:structured-macro></p>`;
+      }
+
+      // 获取当前页面内容和版本号
+      const page = await client.request<any>(
+        `/content/${page_id}?expand=body.storage,version`
+      );
+      const currentBody = page.body?.storage?.value || "";
+      const newBody = currentBody + attachmentHtml;
+      const newVersion = page.version.number + 1;
+
+      await client.request(`/content/${page_id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          version: { number: newVersion },
+          title: page.title,
+          type: "page",
+          body: {
+            storage: {
+              value: newBody,
+              representation: "storage",
+            },
+          },
+        }),
+      });
+
+      result.embedded = true;
+      result.embed_type = isImage ? "image" : "file-link";
+    }
+
+    return result;
+  },
+};
+
+

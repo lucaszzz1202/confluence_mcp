@@ -1,7 +1,7 @@
 import { ConfluenceClient } from "../client.js";
 import { searchTool } from "./search.js";
 import { getPageTool } from "./page.js";
-import { getAttachmentsTool, downloadAttachmentTool } from "./attachment.js";
+import { getAttachmentsTool, downloadAttachmentTool, uploadAttachmentTool } from "./attachment.js";
 import { getCommentsTool, addCommentTool } from "./comment.js";
 import {
   getPageChildrenTool,
@@ -30,4 +30,5 @@ export const tools: Tool[] = [
   addCommentTool,
   createPageTool,
   updatePageTool,
+  uploadAttachmentTool,
 ];
