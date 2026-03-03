@@ -1,6 +1,6 @@
 # Confluence MCP Server
 
-MCP server for Confluence integration.
+MCP server for Confluence integration — read, write, search, and manage attachments via the Confluence REST API.
 
 ## Installation
 
@@ -16,18 +16,39 @@ npx @mcd/confluence-mcp-server
 
 ## Configuration
 
-Add to your MCP settings:
+Add to your MCP settings (e.g. `~/.kiro/settings/mcp.json`):
 
 ```json
 {
-  "confluence": {
-    "command": "npx",
-    "args": ["@mcd/confluence-mcp-server"],
-    "env": {
-      "CONFLUENCE_URL": "https://your-confluence.atlassian.net",
-      "CONFLUENCE_USERNAME": "your-email@example.com",
-      "CONFLUENCE_TOKEN": "your-api-token",
-      "CONFLUENCE_CLOUD": "true"
+  "mcpServers": {
+    "confluence-mcp": {
+      "command": "npx",
+      "args": ["@mcd/confluence-mcp-server@latest"],
+      "env": {
+        "CONFLUENCE_URL": "https://your-confluence.atlassian.net",
+        "CONFLUENCE_USERNAME": "your-email@example.com",
+        "CONFLUENCE_TOKEN": "your-api-token",
+        "CONFLUENCE_CLOUD": "true"
+      }
+    }
+  }
+}
+```
+
+For local development, point directly to the compiled output:
+
+```json
+{
+  "mcpServers": {
+    "confluence-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/dist/index.js"],
+      "env": {
+        "CONFLUENCE_URL": "...",
+        "CONFLUENCE_USERNAME": "...",
+        "CONFLUENCE_TOKEN": "...",
+        "CONFLUENCE_CLOUD": "false"
+      }
     }
   }
 }
@@ -35,56 +56,68 @@ Add to your MCP settings:
 
 ## Environment Variables
 
-- `CONFLUENCE_URL`: Your Confluence instance URL
-- `CONFLUENCE_USERNAME`: Your username or email
-- `CONFLUENCE_TOKEN`: Your API token or password
-- `CONFLUENCE_CLOUD`: Set to "true" for Cloud, "false" for Server
+| Variable | Description |
+|----------|-------------|
+| `CONFLUENCE_URL` | Your Confluence instance URL |
+| `CONFLUENCE_USERNAME` | Your username or email |
+| `CONFLUENCE_TOKEN` | Your API token or password |
+| `CONFLUENCE_CLOUD` | `"true"` for Cloud, `"false"` for Server |
 
 ## Available Tools
 
-### Read Operations
-- `search`: Search Confluence content
-- `get_page`: Get page content by ID or title
-- `get_page_children`: Get child pages of a parent page
-- `get_attachments`: List page attachments
-- `download_attachment`: Download an attachment
-- `get_comments`: Get page comments
-- `add_comment`: Add a comment to a page
+### Pages
+- `search` — Search Confluence content (CQL)
+- `get_page` — Get page content by ID
+- `get_page_children` — Get child pages of a parent page
+- `create_page` — Create a new page
+- `update_page` — Update page content (inline HTML or file path)
 
-### Write Operations
-- `create_page`: Create a new Confluence page
-- `update_page`: Update page content (supports both inline content and file input)
+### Attachments
+- `get_attachments` — List attachments on a page
+- `download_attachment` — Download an attachment to local disk
+- `upload_attachment` — Upload a local file as a page attachment, with optional embedding in page body
 
-### Update Page Examples
+### Comments
+- `get_comments` — Get page comments
+- `add_comment` — Add a comment to a page
 
-**Update with inline content:**
+## Tool Examples
+
+**Search:**
+```json
+{ "query": "space = DEV AND title ~ \"API\"", "limit": 10 }
+```
+
+**Update page with inline content:**
+```json
+{ "page_id": "123456", "content": "<h1>Title</h1><p>Updated content</p>" }
+```
+
+**Update page from file (recommended for large content):**
+```json
+{ "page_id": "123456", "content_file": "/absolute/path/to/content.html" }
+```
+
+**Upload attachment:**
+```json
+{ "page_id": "123456", "file_path": "/absolute/path/to/file.png" }
+```
+
+**Upload and embed in page body:**
 ```json
 {
   "page_id": "123456",
-  "title": "Updated Title",
-  "content": "<h1>New Content</h1><p>Updated via API</p>"
+  "file_path": "/absolute/path/to/image.png",
+  "embed_in_body": true,
+  "comment": "Optional comment"
 }
 ```
 
-**Update with file (recommended for large content):**
-```json
-{
-  "page_id": "123456",
-  "content_file": "/absolute/path/to/content.html"
-}
-```
-
-**Features:**
-- Supports both `content` (inline HTML) and `content_file` (file path)
-- File size limit: 10MB
-- UTF-8 encoding
-- Supports absolute and relative paths (relative to working directory)
-- Chinese error messages for better UX
+Images are embedded as `<ac:image>`, other files as a `view-file` macro link.
 
 ## Development
 
 ```bash
 npm install
 npm run build
-npm link
 ```
